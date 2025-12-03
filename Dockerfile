@@ -1,5 +1,7 @@
 # Use the specified Docker Compose image based on Alpine Linux
-FROM docker/compose:alpine-1.29.2
+FROM docker:dind
+
+COPY --from=docker/compose-bin:v2.20.2 /docker-compose /usr/bin/compose
 
 # 1. Clear the inherited ENTRYPOINT from the base image.
 # The base image's ENTRYPOINT is set to 'docker-compose', which would cause it to exit immediately
