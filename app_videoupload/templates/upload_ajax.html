@@ -9,47 +9,81 @@
 <div id="statusMessage" style="margin-top: 20px;"></div>
 <div id="videoContainer" style="margin-top: 20px;"></div>
 
+<div id="spacer" style="display: none; height: 100vh;">
+    <h2>Scroll Down for Upload Confirmation and Video</h2>
+    <p>Loading...</p>
+</div>
+
+<div id="finalMessage" style="display: none; padding: 20px; border-top: 2px solid #ccc;">
+    </div>
+
+
 <script>
   // Get references to the elements
   const fileInput = document.getElementById('videoFile');
   const statusMessage = document.getElementById('statusMessage');
   const videoContainer = document.getElementById('videoContainer');
   const uploadForm = document.getElementById('uploadForm');
+  
+  // New element references
+  const spacer = document.getElementById('spacer');
+  const finalMessage = document.getElementById('finalMessage');
 
-  // Listen for the file selection event
   fileInput.addEventListener('change', function() {
-    // Check if a file was selected
-    if (this.files.length === 0) {
-      return;
-    }
+    if (this.files.length === 0) return;
 
     const file = this.files[0];
     statusMessage.innerHTML = `Uploading **${file.name}**...`;
-    videoContainer.innerHTML = ''; // Clear previous video
+    videoContainer.innerHTML = '';
+    
+    // Reset page elements before new upload
+    finalMessage.style.display = 'none';
+    spacer.style.display = 'none';
 
-    // Use FormData to build the multipart/form-data payload
     const formData = new FormData(uploadForm);
-    // You could also manually append the file: formData.append('file', file);
 
-    // Use the Fetch API to send the file asynchronously
     fetch('{{ url_for("upload_ajax") }}', {
       method: 'POST',
-      body: formData // The body is the FormData object
+      body: formData
     })
     .then(response => {
-      // Check for HTTP errors (4xx or 5xx)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return response.json(); // Parse the JSON response
+      return response.json();
     })
     .then(data => {
-      if (data.success) {
-        statusMessage.innerHTML = `<span style="color: green;">${data.message}</span>`;
-        displayVideo(data.url, data.filename);
-      } else {
-        statusMessage.innerHTML = `<span style="color: red;">Upload Failed: ${data.message}</span>`;
-      }
+      // --- START: New Timer and Page Increase Logic ---
+
+      // 1. Set a 3-second timer (3000 milliseconds)
+      const timerDuration = 3000; 
+      statusMessage.innerHTML = `<span style="color: blue;">Upload complete. Waiting ${timerDuration/1000} seconds...</span>`;
+
+      setTimeout(() => {
+        
+        // 2. Increase the page size by showing the spacer
+        spacer.style.display = 'block'; 
+        
+        // 3. Render the final success message and video display at the bottom
+        finalMessage.style.display = 'block';
+
+        if (data.success) {
+          finalMessage.innerHTML = `<h2 style="color: green;">${data.message}</h2>`;
+          displayVideo(data.url, data.filename);
+        } else {
+          finalMessage.innerHTML = `<h2 style="color: red;">Upload Failed: ${data.message}</h2>`;
+        }
+        
+        // Optional: Immediately scroll to the bottom, though you said you want the user to scroll
+        // finalMessage.scrollIntoView({ behavior: 'smooth' });
+
+        // Clear the initial status message
+        statusMessage.innerHTML = ''; 
+
+      }, timerDuration);
+
+      // --- END: New Timer and Page Increase Logic ---
+
     })
     .catch(error => {
       statusMessage.innerHTML = `<span style="color: red;">An error occurred during upload: ${error.message}</span>`;
@@ -57,15 +91,16 @@
     });
   });
 
-  // Helper function to display the video
+  // Helper function to display the video (modified to append to finalMessage div)
   function displayVideo(url, filename) {
     const videoHTML = `
-      <h2>${filename}</h2>
+      <h3>Video: ${filename}</h3>
       <video width="400" controls>
         <source src="${url}" type="video/mp4">
         Your browser does not support the video tag.
       </video>
     `;
-    videoContainer.innerHTML = videoHTML;
+    // Append the video HTML to the finalMessage div
+    finalMessage.innerHTML += videoHTML;
   }
 </script>
