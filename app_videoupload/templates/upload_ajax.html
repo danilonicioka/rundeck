@@ -1,31 +1,80 @@
 <!doctype html>
-<title>Instant Video Upload</title>
-<h1>Select a Video to Upload Instantly</h1>
+<title>Fixed Side Upload</title>
+<style>
+    /* Reset and set base size */
+    html, body {
+        height: 100%;
+        margin: 0;
+        font-family: Arial, sans-serif;
+    }
+    
+    /* Main container using Flexbox to divide the screen */
+    #app-container {
+        display: flex; /* Enables flex layout */
+        height: 100vh; /* Full viewport height */
+    }
 
-<form id="uploadForm" method="post" enctype="multipart/form-data">
-  <input type="file" name="file" id="videoFile" accept="video/*">
-</form>
+    /* Fixed Left Panel (Upload Form) */
+    #left-panel {
+        width: 300px; /* Fixed width */
+        padding: 20px;
+        background-color: #f4f4f4;
+        border-right: 1px solid #ccc;
+        /* Ensure content doesn't scroll here */
+        flex-shrink: 0; 
+    }
 
-<div id="statusMessage" style="margin-top: 20px;"></div>
-<div id="videoContainer" style="margin-top: 20px;"></div>
+    /* Scrollable Right Content Area (Results/Spacer) */
+    #right-content {
+        flex-grow: 1; /* Takes up all remaining space */
+        padding: 20px;
+        overflow-y: auto; /* THIS IS THE KEY: Enables vertical scrolling only here */
+        background-color: #ffffff;
+    }
 
-<div id="spacer" style="display: none; height: 100vh;">
-    <h2>Scroll Down for Upload Confirmation and Video</h2>
-    <p>Loading...</p>
-</div>
+    /* Styling for the spacer content */
+    #spacer h2 {
+        color: #007bff;
+        margin-top: 50vh; /* Helps center the message vertically initially */
+        text-align: center;
+    }
+</style>
 
-<div id="finalMessage" style="display: none; padding: 20px; border-top: 2px solid #ccc;">
+<div id="app-container">
+    
+    <div id="left-panel">
+        <h1>Video Uploader</h1>
+        <p>Select a video file to begin the instant upload.</p>
+        
+        <form id="uploadForm" method="post" enctype="multipart/form-data">
+          <input type="file" name="file" id="videoFile" accept="video/*">
+        </form>
+        
+        <div id="statusMessage" style="margin-top: 20px;"></div>
+    </div>
+    
+    <div id="right-content">
+        <h2>Upload Results</h2>
+        <p>Your upload status and video preview will appear below after the processing timer is complete.</p>
+
+        <div id="spacer" style="display: none; height: 100vh;">
+            <h2>Please wait for the timer to finish...</h2>
+        </div>
+
+        <div id="finalMessage" style="display: none; padding: 20px; border-top: 2px solid #ccc;">
+            </div>
     </div>
 
+</div>
 
 <script>
-  // Get references to the elements
+  // Get references
   const fileInput = document.getElementById('videoFile');
   const statusMessage = document.getElementById('statusMessage');
-  const videoContainer = document.getElementById('videoContainer');
   const uploadForm = document.getElementById('uploadForm');
   
-  // New element references
+  // New element references for the RIGHT panel
+  const rightContent = document.getElementById('right-content'); 
   const spacer = document.getElementById('spacer');
   const finalMessage = document.getElementById('finalMessage');
 
@@ -33,12 +82,12 @@
     if (this.files.length === 0) return;
 
     const file = this.files[0];
-    statusMessage.innerHTML = `Uploading **${file.name}**...`;
-    videoContainer.innerHTML = '';
+    statusMessage.innerHTML = `<span style="color: blue;">Uploading **${file.name}**...</span>`;
     
-    // Reset page elements before new upload
+    // Reset state
     finalMessage.style.display = 'none';
     spacer.style.display = 'none';
+    rightContent.scrollTop = 0; // Scroll results panel to the top
 
     const formData = new FormData(uploadForm);
 
@@ -53,54 +102,48 @@
       return response.json();
     })
     .then(data => {
-      // --- START: New Timer and Page Increase Logic ---
-
-      // 1. Set a 3-second timer (3000 milliseconds)
+      // Set the timer duration
       const timerDuration = 3000; 
-      statusMessage.innerHTML = `<span style="color: blue;">Upload complete. Waiting ${timerDuration/1000} seconds...</span>`;
+      statusMessage.innerHTML = `<span style="color: green;">Upload complete. Waiting ${timerDuration/1000} seconds...</span>`;
 
       setTimeout(() => {
         
-        // 2. Increase the page size by showing the spacer
+        // 1. Increase the scrollable area size
         spacer.style.display = 'block'; 
         
-        // 3. Render the final success message and video display at the bottom
+        // 2. Render the final success message at the very bottom
         finalMessage.style.display = 'block';
 
         if (data.success) {
-          finalMessage.innerHTML = `<h2 style="color: green;">${data.message}</h2>`;
+          finalMessage.innerHTML = `<h1>Success!</h1><h3 style="color: green;">${data.message}</h3>`;
           displayVideo(data.url, data.filename);
         } else {
-          finalMessage.innerHTML = `<h2 style="color: red;">Upload Failed: ${data.message}</h2>`;
+          finalMessage.innerHTML = `<h1 style="color: red;">Failed!</h1><h3 style="color: red;">${data.message}</h3>`;
         }
         
-        // Optional: Immediately scroll to the bottom, though you said you want the user to scroll
-        // finalMessage.scrollIntoView({ behavior: 'smooth' });
+        // 3. Scroll the RIGHT panel all the way to the bottom to land the message
+        rightContent.scrollTop = rightContent.scrollHeight;
 
-        // Clear the initial status message
+        // Clear the fixed panel status after final message is shown
         statusMessage.innerHTML = ''; 
 
       }, timerDuration);
-
-      // --- END: New Timer and Page Increase Logic ---
-
     })
     .catch(error => {
-      statusMessage.innerHTML = `<span style="color: red;">An error occurred during upload: ${error.message}</span>`;
+      statusMessage.innerHTML = `<span style="color: red;">Error: ${error.message}</span>`;
       console.error('Fetch error:', error);
     });
   });
 
-  // Helper function to display the video (modified to append to finalMessage div)
+  // Helper function to display the video
   function displayVideo(url, filename) {
     const videoHTML = `
-      <h3>Video: ${filename}</h3>
-      <video width="400" controls>
+      <h3>Video Preview: ${filename}</h3>
+      <video width="80%" controls style="max-width: 600px;">
         <source src="${url}" type="video/mp4">
         Your browser does not support the video tag.
       </video>
     `;
-    // Append the video HTML to the finalMessage div
     finalMessage.innerHTML += videoHTML;
   }
 </script>
