@@ -1,5 +1,5 @@
 import os
-from flask import Flask, flash, request, redirect, url_for, render_template
+from flask import Flask, flash, request, redirect, url_for, render_template, jsonify 
 from werkzeug.utils import secure_filename
 
 # Define the folder where uploaded files will be stored
@@ -21,44 +21,43 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@app.route('/', methods=['GET', 'POST'])
-def upload_file():
-    if request.method == 'POST':
-        # 1. Check if the POST request has the file part
-        if 'file' not in request.files:
-            flash('No file part')
-            return redirect(request.url)
+@app.route('/upload-video', methods=['POST']) # New route specifically for AJAX POST
+def upload_ajax():
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file part'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'No selected file'}), 400
+    
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        try:
+            # Save the file
+            file.save(filepath)
+            
+            # Return success status and the file's URL
+            file_url = url_for('static', filename='uploads/' + filename, _external=True)
+            return jsonify({
+                'success': True, 
+                'message': f'Video "{filename}" uploaded successfully.', 
+                'url': file_url,
+                'filename': filename
+            }), 200
+        except Exception as e:
+            # Handle potential saving errors
+            print(f"Error saving file: {e}")
+            return jsonify({'success': False, 'message': 'Server error during save.'}), 500
+    else:
+        return jsonify({'success': False, 'message': 'Invalid file type.'}), 400
 
-        file = request.files['file']
-
-        # 2. Check if user selected a file
-        if file.filename == '':
-            flash('No selected file')
-            return redirect(request.url)
-
-        # 3. Check if the file is allowed and save it
-        if file and allowed_file(file.filename):
-            # Secure the filename to prevent directory traversal attacks
-            filename = secure_filename(file.filename)
-
-            # Save the file to the configured UPLOAD_FOLDER
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-
-            flash(f'Video "{filename}" successfully uploaded!')
-            # Redirect to a page that can display the video
-            return redirect(url_for('uploaded_file', filename=filename))
-        else:
-            flash('Invalid file type. Allowed: ' + ', '.join(ALLOWED_EXTENSIONS))
-            return redirect(request.url)
-
-    # For GET request, render the upload form
-    return render_template('upload.html')
-
-# Add a route to serve the uploaded file (optional, but good for display)
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    # You'll need to create a display template here that uses the HTML5 <video> tag
-    return render_template('video_display.html', filename=filename) 
+# Keep your main route for rendering the page
+@app.route('/', methods=['GET'])
+def index():
+    return render_template('upload_ajax.html') 
 
 if __name__ == '__main__':
     app.run(debug=True)
