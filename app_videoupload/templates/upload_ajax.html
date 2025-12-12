@@ -1,5 +1,5 @@
 <!doctype html>
-<title>Fixed Side Upload</title>
+<title>Scrollable Upload Content</title>
 <style>
     /* Reset and set base size */
     html, body {
@@ -10,25 +10,32 @@
     
     /* Main container using Flexbox to divide the screen */
     #app-container {
-        display: flex; /* Enables flex layout */
-        height: 100vh; /* Full viewport height */
+        display: flex;
+        height: 100vh;
     }
 
-    /* Fixed Left Panel (Upload Form) */
+    /* Fixed Left Panel (Title Only) */
     #left-panel {
-        width: 300px; /* Fixed width */
-        padding: 20px;
-        background-color: #f4f4f4;
-        border-right: 1px solid #ccc;
-        /* Ensure content doesn't scroll here */
+        width: 150px; /* Smaller fixed width */
+        padding: 20px 0; /* Padding top/bottom only */
+        background-color: #333;
+        color: white;
+        text-align: center;
         flex-shrink: 0; 
     }
+    
+    #left-panel h1 {
+        font-size: 1.5em;
+        margin: 0;
+        padding: 10px 0;
+        line-height: 1.2;
+    }
 
-    /* Scrollable Right Content Area (Results/Spacer) */
+    /* Scrollable Right Content Area (Upload Form + Results) */
     #right-content {
-        flex-grow: 1; /* Takes up all remaining space */
+        flex-grow: 1; 
         padding: 20px;
-        overflow-y: auto; /* THIS IS THE KEY: Enables vertical scrolling only here */
+        overflow-y: auto; /* THIS REMAINS KEY: Enables vertical scrolling only here */
         background-color: #ffffff;
     }
 
@@ -44,21 +51,25 @@
     
     <div id="left-panel">
         <h1>Video Uploader</h1>
-        <p>Select a video file to begin the instant upload.</p>
+    </div>
+    
+    <div id="right-content">
+        
+        <h2>Upload Control</h2>
+        <p>Select a video file to begin the instant upload. Scroll down after the timer to see the results!</p>
         
         <form id="uploadForm" method="post" enctype="multipart/form-data">
           <input type="file" name="file" id="videoFile" accept="video/*">
         </form>
         
         <div id="statusMessage" style="margin-top: 20px;"></div>
-    </div>
-    
-    <div id="right-content">
-        <h2>Upload Results</h2>
-        <p>Your upload status and video preview will appear below after the processing timer is complete.</p>
+
+        <hr style="margin: 30px 0;">
+        
+        <h3>Results Area</h3>
 
         <div id="spacer" style="display: none; height: 100vh;">
-            <h2>Please wait for the timer to finish...</h2>
+            <h2>Please wait for the server processing timer to finish...</h2>
         </div>
 
         <div id="finalMessage" style="display: none; padding: 20px; border-top: 2px solid #ccc;">
@@ -73,7 +84,7 @@
   const statusMessage = document.getElementById('statusMessage');
   const uploadForm = document.getElementById('uploadForm');
   
-  // New element references for the RIGHT panel
+  // Element references for the scrollable panel
   const rightContent = document.getElementById('right-content'); 
   const spacer = document.getElementById('spacer');
   const finalMessage = document.getElementById('finalMessage');
@@ -84,10 +95,10 @@
     const file = this.files[0];
     statusMessage.innerHTML = `<span style="color: blue;">Uploading **${file.name}**...</span>`;
     
-    // Reset state
+    // Reset state and scroll results panel to the top
     finalMessage.style.display = 'none';
     spacer.style.display = 'none';
-    rightContent.scrollTop = 0; // Scroll results panel to the top
+    rightContent.scrollTop = 0; 
 
     const formData = new FormData(uploadForm);
 
@@ -104,11 +115,11 @@
     .then(data => {
       // Set the timer duration
       const timerDuration = 3000; 
-      statusMessage.innerHTML = `<span style="color: green;">Upload complete. Waiting ${timerDuration/1000} seconds...</span>`;
+      statusMessage.innerHTML = `<span style="color: green;">Upload complete. Processing timer started (${timerDuration/1000}s)...</span>`;
 
       setTimeout(() => {
         
-        // 1. Increase the scrollable area size
+        // 1. Increase the scrollable area size by showing the spacer
         spacer.style.display = 'block'; 
         
         // 2. Render the final success message at the very bottom
@@ -121,11 +132,11 @@
           finalMessage.innerHTML = `<h1 style="color: red;">Failed!</h1><h3 style="color: red;">${data.message}</h3>`;
         }
         
-        // 3. Scroll the RIGHT panel all the way to the bottom to land the message
+        // 3. Scroll the RIGHT panel all the way to the bottom
         rightContent.scrollTop = rightContent.scrollHeight;
 
-        // Clear the fixed panel status after final message is shown
-        statusMessage.innerHTML = ''; 
+        // Update the status message to indicate the timer is done
+        statusMessage.innerHTML = 'Processing complete. Scroll down to see the video.'; 
 
       }, timerDuration);
     })
