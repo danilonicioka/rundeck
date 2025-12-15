@@ -1,2 +1,0 @@
-Flask
-gunicorn # Used for production serving
